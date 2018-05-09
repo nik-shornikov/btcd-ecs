@@ -88,7 +88,7 @@
     # PROVISION
 
     - meta: end_play
-      when: destroy != "nothing"
+      when: destroy == "infrastructure" or destroy == "everything"
     - name: tf apply
       terraform:
         project_path: ./infrastructure

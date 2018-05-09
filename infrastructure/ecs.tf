@@ -8,6 +8,7 @@ resource "aws_ecs_service" "default" {
   network_configuration {
     security_groups = ["${data.aws_security_group.default.id}"]
     subnets = ["${data.aws_subnet_ids.default.ids}"]
+    assign_public_ip = true
   }
 }
 resource "aws_ecs_task_definition" "default" {

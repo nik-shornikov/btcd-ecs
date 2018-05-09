@@ -1,9 +1,13 @@
 ## Contents
 
+> The only host dependency is `docker-compose`; nothing is directly installed; `docker-machine` can be used if directory mounting is set up and/or paths are specified in the override file (described below)
+
 ```
 .
 ├── default.env
 ├── docker-compose.yml
+├── (override.yml)
+├── .gitignore
 ├── README.md
 ├── build
 ├── infrastructure
@@ -30,26 +34,24 @@ The design is based on a subset of the following parameters:
 
 The invocation layers that emulate a CI process (and can be integrated into one at any layer) are the following:
 
-1. Docker-Compose builds the build container
-1. Build container invokes an Ansible playbook
-1. Ansible playbook invokes local tools and APIs
-
-> The only host dependency is docker-compose; nothing is directly installed
+1. Compose builds the CI image
+1. CI container invokes Ansible
+1. Ansible invokes local tools and APIs
 
 ### Quick Start
 
 The expected environment variables without reasonable defaults (i.e. credentials) are pass-thru declared in `default.env`. There are two methods of setting them before executing the CI process, which provisions a small-footprint cluster and deploys the daemon.
 
-> Docker-Machine can be used if directory mounting is set up and/or paths are specified in the override file
+The infrastructure and source directories can also be used directly with their respective tools, Terraform and Docker.
 
-#### Environment
+#### Environment Option
 
-Set variables in the shell environment: `AWS_ACCESS_KEY_ID=**** ... docker-compose up --build`
+Set variables in the shell environment: `AWS_ACCESS_KEY_ID=**** ... docker-compose up --build`. On subsequent runs the rebuild will short-circuit and the build switch is not necessary.
 
-#### Override File
+#### Override File Option
 
-Create an override file to use with docker-compose, and set the variables there: `docker-compose -f docker-compose.yml -f override.yml up --build`
+Create an override file to use with docker-compose, and set the variables there: `docker-compose -f docker-compose.yml -f override.yml up --build`. On subsequent runs the rebuild will short-circuit and the build switch is not necessary.
 
 #### Cleanup
 
-With the build image on hand, you clean up everything at once like so: `docker-compose -f docker-compose.yml -f override.yml run ci destroy=everything`
+After building the CI image, you can clean up everything at once with the run subcommand: `... run ci destroy=everything`. The `CMD` is passed to Ansible as extra variables. Because of S3 bucket API consistency limitations, there is also the option to pass `destroy-infrastructure`, which leaves the low-cost remote state resources in place.

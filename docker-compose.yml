@@ -1,0 +1,12 @@
+version: "3"
+
+services:
+  ci:
+    build: ./build
+    image: btcd-ecs
+    env_file:
+      - default.env
+    volumes:
+      - ./infrastructure:/infrastructure
+      - ./source:/source
+      - /var/run/docker.sock:/var/run/docker.sock

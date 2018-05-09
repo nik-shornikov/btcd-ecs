@@ -1,0 +1,80 @@
+- hosts: localhost
+  gather_facts: False
+  tasks:
+    - name: check vars
+      assert: { that: "lookup('env', item) != ''" }
+      loop:
+        - ENVIRONMENT_NAME
+        - AWS_ACCESS_KEY_ID
+    - name: name state
+      set_fact:
+        state_namespace: "{{ lookup('env', 'AWS_ACCESS_KEY_ID') | password_hash('sha256', 'btcd') | to_uuid }}"
+    - name: create lock table
+      dynamodb_table:
+        name: "{{ state_namespace }}"
+        hash_key_name: LockID
+        hash_key_type: STRING
+    - name: create state bucket
+      aws_s3:
+        bucket: "{{ state_namespace }}"
+        object: /placeholder
+        mode: create
+    - name: tf clean
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+       - /infrastructure/.terraform
+       - /infrastructure/terraform.tfstate.d
+       - /infrastructure/terraform.tfstate
+    - name: ansible compat tf init
+      shell: NS={{ state_namespace }} /tf.sh
+      args:
+        chdir: /infrastructure
+      register: preinit
+
+    # DESTROY INFRASTRUCTURE
+
+    - name: tf destroy
+      terraform:
+        project_path: /infrastructure
+        state: absent
+        lock: yes
+      when: destroy == "infrastructure" or destroy == "everything"
+
+    # DESTROY EVERYTHING
+
+    - name: delete lock table
+      dynamodb_table:
+        name: "{{ state_namespace }}"
+        hash_key_name: LockID
+        hash_key_type: STRING
+        state: absent
+      when: destroy == "everything"
+    - name: delete state bucket
+      aws_s3:
+        bucket: "{{ state_namespace }}"
+        mode: delete
+      when: destroy == "everything"
+
+    # PROVISION
+
+    - meta: end_play
+      when: destroy != "nothing"
+    - name: tf apply
+      terraform:
+        project_path: /infrastructure
+        state: present
+        lock: yes
+      register: tf
+
+    # BUILD AND DEPLOY
+
+    - name: login
+      shell: "$(aws ecr get-login --no-include-email)"
+    - name: daemon image build
+      docker_image:
+        path: /source
+        name: "{{ tf.outputs.repo.value }}"
+        tag: latest
+        push: yes

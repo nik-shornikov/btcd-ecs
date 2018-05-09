@@ -1,0 +1,1 @@
+resource "aws_ecr_repository" "default" {name = "${terraform.env}"}

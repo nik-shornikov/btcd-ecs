@@ -14,30 +14,50 @@
         name: "{{ state_namespace }}"
         hash_key_name: LockID
         hash_key_type: STRING
+        read_capacity: 1
+        write_capacity: 2
+    - name: prime dynamo
+      dynamodb_table:
+        name: "{{ state_namespace }}"
+        read_capacity: 2
+        write_capacity: 2
+      retries: 3
+      delay: 10
+      register: result
+      until: result.failed == false
     - name: create state bucket
       aws_s3:
         bucket: "{{ state_namespace }}"
-        object: /placeholder
         mode: create
+    - name: prime s3
+      aws_s3:
+        bucket: "{{ state_namespace }}"
+        object: /provision.yml
+        src: /provision.yml
+        mode: put
+      retries: 3
+      delay: 10
+      register: result
+      until: result.failed == false
     - name: tf clean
       file:
         path: "{{ item }}"
         state: absent
       loop:
-       - /infrastructure/.terraform
-       - /infrastructure/terraform.tfstate.d
-       - /infrastructure/terraform.tfstate
+       - ./infrastructure/.terraform
+       - ./infrastructure/terraform.tfstate.d
+       - ./infrastructure/terraform.tfstate
     - name: ansible compat tf init
       shell: NS={{ state_namespace }} /tf.sh
       args:
-        chdir: /infrastructure
+        chdir: ./infrastructure
       register: preinit
 
     # DESTROY INFRASTRUCTURE
 
     - name: tf destroy
       terraform:
-        project_path: /infrastructure
+        project_path: ./infrastructure
         state: absent
         lock: yes
       when: destroy == "infrastructure" or destroy == "everything"
@@ -51,11 +71,19 @@
         hash_key_type: STRING
         state: absent
       when: destroy == "everything"
+      retries: 3
+      delay: 10
+      register: result
+      until: result.failed == false
     - name: delete state bucket
       aws_s3:
         bucket: "{{ state_namespace }}"
         mode: delete
       when: destroy == "everything"
+      retries: 3
+      delay: 10
+      register: result
+      until: result.failed == false
 
     # PROVISION
 
@@ -63,7 +91,7 @@
       when: destroy != "nothing"
     - name: tf apply
       terraform:
-        project_path: /infrastructure
+        project_path: ./infrastructure
         state: present
         lock: yes
       register: tf

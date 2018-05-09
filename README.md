@@ -1,6 +1,6 @@
 ## Contents
 
-> The only host dependency is `docker-compose`; nothing is directly installed; `docker-machine` can be used if directory mounting is set up and/or paths are specified in the override file (described below)
+> The only host dependency is `docker-compose`; nothing is directly installed; `docker-machine` can be used if directory mounting is set up and/or paths are specified in an override file -- with a cloud-based host, the first run should take less than a minute, and the daemons should bootstrap within 2-3
 
 ```
 .
@@ -42,7 +42,7 @@ The invocation layers that emulate a CI process (and can be integrated into one 
 
 The expected environment variables without reasonable defaults (i.e. credentials) are pass-thru declared in `default.env`. There are two methods of setting them before executing the CI process, which provisions a small-footprint cluster and deploys the daemon.
 
-The infrastructure and source directories can also be used directly with their respective tools, Terraform and Docker.
+The infrastructure and source directories can also be used directly with their respective tools, Ansible, Terraform and Docker.
 
 #### Environment Option
 
